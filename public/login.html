@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Login to your ShopZone account">
+  <title>Login — ShopZone</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="auth-body">
+
+  <div class="auth-container">
+    <div class="auth-left">
+      <div class="auth-brand">
+        <a href="/" class="logo">
+          <div class="logo-icon">🛍️</div>
+          <div class="logo-text">Shop<span>Zone</span></div>
+        </a>
+        <h1>Welcome Back</h1>
+        <p>Login to your account to continue shopping, track orders, and manage your profile.</p>
+      </div>
+      <div class="auth-features">
+        <div class="auth-feature"><span>🚚</span> Track your orders in real-time</div>
+        <div class="auth-feature"><span>💰</span> Exclusive member discounts</div>
+        <div class="auth-feature"><span>♡</span> Save items to your wishlist</div>
+      </div>
+    </div>
+
+    <div class="auth-right">
+      <div class="auth-form-wrapper">
+        <h2>Sign In</h2>
+        <p class="auth-subtitle">Enter your credentials to access your account</p>
+
+        <div class="auth-alert hidden" id="authAlert"></div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <div class="input-wrapper">
+              <span class="input-icon">📧</span>
+              <input type="email" id="email" name="email" placeholder="you@example.com" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Password</label>
+            <div class="input-wrapper">
+              <span class="input-icon">🔒</span>
+              <input type="password" id="password" name="password" placeholder="Enter your password" required minlength="6">
+            </div>
+          </div>
+
+          <button type="submit" class="auth-btn" id="submitBtn">
+            <span id="btnText">Sign In</span>
+            <span id="btnLoader" class="loader hidden"></span>
+          </button>
+        </form>
+
+        <div class="auth-footer">
+          <p>Don't have an account? <a href="/signup">Create one</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function handleLogin(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      const alert = document.getElementById('authAlert');
+      const btnText = document.getElementById('btnText');
+      const btnLoader = document.getElementById('btnLoader');
+
+      btn.disabled = true;
+      btnText.textContent = 'Signing in...';
+      btnLoader.classList.remove('hidden');
+      alert.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value
+          })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          alert.className = 'auth-alert success';
+          alert.textContent = '✓ Login successful! Redirecting...';
+          setTimeout(() => window.location.href = '/', 1000);
+        } else {
+          alert.className = 'auth-alert error';
+          alert.textContent = data.error;
+        }
+      } catch (err) {
+        alert.className = 'auth-alert error';
+        alert.textContent = 'Connection error. Please try again.';
+      }
+
+      btn.disabled = false;
+      btnText.textContent = 'Sign In';
+      btnLoader.classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

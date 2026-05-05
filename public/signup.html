@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Create your ShopZone account">
+  <title>Sign Up — ShopZone</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="auth-body">
+
+  <div class="auth-container">
+    <div class="auth-left">
+      <div class="auth-brand">
+        <a href="/" class="logo">
+          <div class="logo-icon">🛍️</div>
+          <div class="logo-text">Shop<span>Zone</span></div>
+        </a>
+        <h1>Join ShopZone</h1>
+        <p>Create your free account and start discovering amazing products at unbeatable prices.</p>
+      </div>
+      <div class="auth-features">
+        <div class="auth-feature"><span>✨</span> Get 10% off your first order</div>
+        <div class="auth-feature"><span>🔔</span> Personalized deal notifications</div>
+        <div class="auth-feature"><span>⚡</span> Faster checkout experience</div>
+      </div>
+    </div>
+
+    <div class="auth-right">
+      <div class="auth-form-wrapper">
+        <h2>Create Account</h2>
+        <p class="auth-subtitle">Fill in your details to get started</p>
+
+        <div class="auth-alert hidden" id="authAlert"></div>
+
+        <form id="signupForm" onsubmit="handleSignup(event)">
+          <div class="form-group">
+            <label for="full_name">Full Name</label>
+            <div class="input-wrapper">
+              <span class="input-icon">👤</span>
+              <input type="text" id="full_name" name="full_name" placeholder="John Doe" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <div class="input-wrapper">
+              <span class="input-icon">📧</span>
+              <input type="email" id="email" name="email" placeholder="you@example.com" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="phone">Phone Number <span style="color:var(--text3)">(optional)</span></label>
+            <div class="input-wrapper">
+              <span class="input-icon">📱</span>
+              <input type="tel" id="phone" name="phone" placeholder="+1 (555) 000-0000">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Password</label>
+            <div class="input-wrapper">
+              <span class="input-icon">🔒</span>
+              <input type="password" id="password" name="password" placeholder="Min. 6 characters" required minlength="6">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="confirm_password">Confirm Password</label>
+            <div class="input-wrapper">
+              <span class="input-icon">🔒</span>
+              <input type="password" id="confirm_password" name="confirm_password" placeholder="Re-enter password" required minlength="6">
+            </div>
+          </div>
+
+          <button type="submit" class="auth-btn" id="submitBtn">
+            <span id="btnText">Create Account</span>
+            <span id="btnLoader" class="loader hidden"></span>
+          </button>
+        </form>
+
+        <div class="auth-footer">
+          <p>Already have an account? <a href="/login">Sign in</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function handleSignup(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      const alert = document.getElementById('authAlert');
+      const btnText = document.getElementById('btnText');
+      const btnLoader = document.getElementById('btnLoader');
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirm_password').value;
+
+      if (password !== confirmPassword) {
+        alert.className = 'auth-alert error';
+        alert.textContent = 'Passwords do not match';
+        return;
+      }
+
+      btn.disabled = true;
+      btnText.textContent = 'Creating account...';
+      btnLoader.classList.remove('hidden');
+      alert.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            full_name: document.getElementById('full_name').value,
+            email: document.getElementById('email').value,
+            phone: document.getElementById('phone').value,
+            password: password
+          })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          alert.className = 'auth-alert success';
+          alert.textContent = '✓ Account created! Redirecting...';
+          setTimeout(() => window.location.href = '/', 1000);
+        } else {
+          alert.className = 'auth-alert error';
+          alert.textContent = data.error;
+        }
+      } catch (err) {
+        alert.className = 'auth-alert error';
+        alert.textContent = 'Connection error. Please try again.';
+      }
+
+      btn.disabled = false;
+      btnText.textContent = 'Create Account';
+      btnLoader.classList.add('hidden');
+    }
+  </script>
+</body>
+</html>
