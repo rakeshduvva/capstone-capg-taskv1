@@ -415,5 +415,5 @@ This project is licensed under the MIT License.
 ## 👤 Author
 
 **ShopZone** — Built as part of the Cloud & DevSecOps Capstone Project.
-#   c a p s t o n e - c a p g - t a s k v 1  
+   c a p s t o n e - c a p g - t a s k v 1  
  
