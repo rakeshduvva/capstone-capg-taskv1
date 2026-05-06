@@ -154,8 +154,6 @@ shopzone-ecommerce/
 ├── package.json           # Dependencies and scripts
 ├── .env                   # Environment variables (not committed)
 ├── README.md              # Project documentation
-├── db/
-│   └── schema.sql         # Database schema reference (for documentation)
 └── public/                # Static frontend files
     ├── index.html         # Home page — product catalog + cart
     ├── login.html         # Login page
@@ -417,3 +415,5 @@ This project is licensed under the MIT License.
 ## 👤 Author
 
 **ShopZone** — Built as part of the Cloud & DevSecOps Capstone Project.
+#   c a p s t o n e - c a p g - t a s k v 1  
+ 
