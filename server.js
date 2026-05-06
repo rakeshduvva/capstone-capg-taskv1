@@ -1,12 +1,14 @@
 require('dotenv').config();
 const express = require('express');
-const mysql = require('mysql2/promise');
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/shopzone';
 
 // --- Middleware ---
 app.use(express.json());
@@ -16,95 +18,74 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'shopzone-secret-key-2026',
   resave: false,
   saveUninitialized: false,
+  store: MongoStore.create({ mongoUrl: MONGO_URI }),
   cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24 hours
 }));
 
-// --- Database Connection ---
-let db;
+// ==================== MONGOOSE SCHEMAS ====================
+
+const userSchema = new mongoose.Schema({
+  full_name: { type: String, required: true },
+  email:     { type: String, required: true, unique: true, lowercase: true },
+  password:  { type: String, required: true },
+  phone:     { type: String, default: null }
+}, { timestamps: true });
+
+const productSchema = new mongoose.Schema({
+  name:      { type: String, required: true },
+  category:  { type: String, required: true },
+  price:     { type: Number, required: true },
+  old_price: { type: Number, default: null },
+  badge:     { type: String, default: null },
+  rating:    { type: Number, default: 0 },
+  reviews:   { type: Number, default: 0 },
+  image_url: { type: String },
+  stock:     { type: Number, default: 100 }
+}, { timestamps: true });
+
+const orderSchema = new mongoose.Schema({
+  user_id:      { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  total_amount: { type: Number, required: true },
+  status:       { type: String, enum: ['pending','confirmed','shipped','delivered','cancelled'], default: 'pending' },
+  items: [{
+    product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+    quantity:   { type: Number, required: true },
+    price:      { type: Number, required: true }
+  }]
+}, { timestamps: true });
+
+const User = mongoose.model('User', userSchema);
+const Product = mongoose.model('Product', productSchema);
+const Order = mongoose.model('Order', orderSchema);
+
+// ==================== DATABASE CONNECTION ====================
+
 async function initDB() {
   try {
-    db = await mysql.createPool({
-      host: process.env.DB_HOST || 'localhost',
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASS || '',
-      database: process.env.DB_NAME || 'shopzone',
-      waitForConnections: true,
-      connectionLimit: 10
-    });
-    console.log('✅ MySQL connected successfully');
+    await mongoose.connect(MONGO_URI);
+    console.log('✅ MongoDB connected successfully');
 
-    // Create tables if not exist
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        full_name VARCHAR(100) NOT NULL,
-        email VARCHAR(255) NOT NULL UNIQUE,
-        password VARCHAR(255) NOT NULL,
-        phone VARCHAR(20),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS products (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        category VARCHAR(100) NOT NULL,
-        price DECIMAL(10,2) NOT NULL,
-        old_price DECIMAL(10,2),
-        badge VARCHAR(20),
-        rating DECIMAL(2,1) DEFAULT 0,
-        reviews INT DEFAULT 0,
-        image_url VARCHAR(500),
-        stock INT DEFAULT 100,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS orders (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        total_amount DECIMAL(10,2) NOT NULL,
-        status VARCHAR(20) DEFAULT 'pending',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-      )
-    `);
-
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS order_items (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        order_id INT NOT NULL,
-        product_id INT NOT NULL,
-        quantity INT NOT NULL,
-        price DECIMAL(10,2) NOT NULL,
-        FOREIGN KEY (order_id) REFERENCES orders(id),
-        FOREIGN KEY (product_id) REFERENCES products(id)
-      )
-    `);
-
-    // Seed products if table is empty
-    const [rows] = await db.query('SELECT COUNT(*) as count FROM products');
-    if (rows[0].count === 0) {
-      await db.query(`INSERT INTO products (name, category, price, old_price, badge, rating, reviews, image_url) VALUES
-        ('Wireless Noise-Cancelling Headphones','Electronics',79.99,129.99,'SALE',4.8,342,'https://picsum.photos/seed/headphones/400/400'),
-        ('Premium Leather Backpack','Fashion',59.99,NULL,NULL,4.6,218,'https://picsum.photos/seed/backpack/400/400'),
-        ('Smart Fitness Watch Pro','Electronics',149.99,199.99,'SALE',4.9,567,'https://picsum.photos/seed/smartwatch/400/400'),
-        ('Organic Cotton T-Shirt','Fashion',24.99,NULL,'NEW',4.4,89,'https://picsum.photos/seed/tshirt/400/400'),
-        ('Portable Bluetooth Speaker','Electronics',39.99,59.99,'SALE',4.7,431,'https://picsum.photos/seed/speaker/400/400'),
-        ('Stainless Steel Water Bottle','Home',19.99,NULL,NULL,4.5,156,'https://picsum.photos/seed/bottle/400/400'),
-        ('Running Shoes Ultra Boost','Sports',89.99,119.99,'SALE',4.8,623,'https://picsum.photos/seed/shoes/400/400'),
-        ('Ceramic Plant Pot Set','Home',34.99,NULL,'NEW',4.3,72,'https://picsum.photos/seed/plantpot/400/400'),
-        ('USB-C Fast Charging Cable','Electronics',12.99,NULL,NULL,4.2,890,'https://picsum.photos/seed/cable/400/400'),
-        ('Yoga Mat Premium','Sports',29.99,44.99,'SALE',4.6,234,'https://picsum.photos/seed/yogamat/400/400'),
-        ('Scented Soy Candle Set','Home',22.99,NULL,'NEW',4.7,167,'https://picsum.photos/seed/candle/400/400'),
-        ('Denim Jacket Classic Fit','Fashion',69.99,89.99,'SALE',4.5,198,'https://picsum.photos/seed/jacket/400/400')
-      `);
+    // Seed products if collection is empty
+    const count = await Product.countDocuments();
+    if (count === 0) {
+      await Product.insertMany([
+        { name:'Wireless Noise-Cancelling Headphones', category:'Electronics', price:79.99, old_price:129.99, badge:'SALE', rating:4.8, reviews:342, image_url:'https://picsum.photos/seed/headphones/400/400' },
+        { name:'Premium Leather Backpack', category:'Fashion', price:59.99, rating:4.6, reviews:218, image_url:'https://picsum.photos/seed/backpack/400/400' },
+        { name:'Smart Fitness Watch Pro', category:'Electronics', price:149.99, old_price:199.99, badge:'SALE', rating:4.9, reviews:567, image_url:'https://picsum.photos/seed/smartwatch/400/400' },
+        { name:'Organic Cotton T-Shirt', category:'Fashion', price:24.99, badge:'NEW', rating:4.4, reviews:89, image_url:'https://picsum.photos/seed/tshirt/400/400' },
+        { name:'Portable Bluetooth Speaker', category:'Electronics', price:39.99, old_price:59.99, badge:'SALE', rating:4.7, reviews:431, image_url:'https://picsum.photos/seed/speaker/400/400' },
+        { name:'Stainless Steel Water Bottle', category:'Home', price:19.99, rating:4.5, reviews:156, image_url:'https://picsum.photos/seed/bottle/400/400' },
+        { name:'Running Shoes Ultra Boost', category:'Sports', price:89.99, old_price:119.99, badge:'SALE', rating:4.8, reviews:623, image_url:'https://picsum.photos/seed/shoes/400/400' },
+        { name:'Ceramic Plant Pot Set', category:'Home', price:34.99, badge:'NEW', rating:4.3, reviews:72, image_url:'https://picsum.photos/seed/plantpot/400/400' },
+        { name:'USB-C Fast Charging Cable', category:'Electronics', price:12.99, rating:4.2, reviews:890, image_url:'https://picsum.photos/seed/cable/400/400' },
+        { name:'Yoga Mat Premium', category:'Sports', price:29.99, old_price:44.99, badge:'SALE', rating:4.6, reviews:234, image_url:'https://picsum.photos/seed/yogamat/400/400' },
+        { name:'Scented Soy Candle Set', category:'Home', price:22.99, badge:'NEW', rating:4.7, reviews:167, image_url:'https://picsum.photos/seed/candle/400/400' },
+        { name:'Denim Jacket Classic Fit', category:'Fashion', price:69.99, old_price:89.99, badge:'SALE', rating:4.5, reviews:198, image_url:'https://picsum.photos/seed/jacket/400/400' }
+      ]);
       console.log('✅ Sample products seeded');
     }
   } catch (err) {
-    console.error('❌ Database error:', err.message);
+    console.error('❌ MongoDB error:', err.message);
     console.log('⚠️  Server running without database. Using in-memory data.');
   }
 }
@@ -130,20 +111,22 @@ app.post('/api/signup', async (req, res) => {
     }
 
     // Check if user exists
-    const [existing] = await db.query('SELECT id FROM users WHERE email = ?', [email]);
-    if (existing.length > 0) {
+    const existing = await User.findOne({ email: email.toLowerCase() });
+    if (existing) {
       return res.status(409).json({ error: 'Email already registered' });
     }
 
     // Hash password and create user
     const hashedPassword = await bcrypt.hash(password, 10);
-    const [result] = await db.query(
-      'INSERT INTO users (full_name, email, password, phone) VALUES (?, ?, ?, ?)',
-      [full_name, email, hashedPassword, phone || null]
-    );
+    const user = await User.create({
+      full_name,
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      phone: phone || null
+    });
 
     // Auto-login after signup
-    req.session.user = { id: result.insertId, full_name, email };
+    req.session.user = { id: user._id, full_name: user.full_name, email: user.email };
     res.status(201).json({ message: 'Account created successfully', user: req.session.user });
   } catch (err) {
     console.error('Signup error:', err);
@@ -160,18 +143,17 @@ app.post('/api/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
-    if (users.length === 0) {
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const user = users[0];
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    req.session.user = { id: user.id, full_name: user.full_name, email: user.email };
+    req.session.user = { id: user._id, full_name: user.full_name, email: user.email };
     res.json({ message: 'Login successful', user: req.session.user });
   } catch (err) {
     console.error('Login error:', err);
@@ -199,7 +181,7 @@ app.get('/api/me', (req, res) => {
 // GET /api/products
 app.get('/api/products', async (req, res) => {
   try {
-    const [products] = await db.query('SELECT * FROM products ORDER BY created_at DESC');
+    const products = await Product.find().sort({ createdAt: -1 });
     res.json(products);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch products' });
@@ -214,20 +196,17 @@ app.post('/api/orders', requireAuth, async (req, res) => {
     const { items, total } = req.body;
     const userId = req.session.user.id;
 
-    const [orderResult] = await db.query(
-      'INSERT INTO orders (user_id, total_amount) VALUES (?, ?)',
-      [userId, total]
-    );
-    const orderId = orderResult.insertId;
+    const order = await Order.create({
+      user_id: userId,
+      total_amount: total,
+      items: items.map(item => ({
+        product_id: item.id,
+        quantity: item.qty,
+        price: item.price
+      }))
+    });
 
-    for (const item of items) {
-      await db.query(
-        'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)',
-        [orderId, item.id, item.qty, item.price]
-      );
-    }
-
-    res.status(201).json({ message: 'Order placed successfully', orderId });
+    res.status(201).json({ message: 'Order placed successfully', orderId: order._id });
   } catch (err) {
     console.error('Order error:', err);
     res.status(500).json({ error: 'Failed to place order' });
