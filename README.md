@@ -79,8 +79,8 @@ Before you begin, make sure you have the following installed:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/shopzone-ecommerce.git
-cd shopzone-ecommerce
+git clone https://github.com/rakeshduvva/capstone-capg-taskv1.git
+cd capstone-capg-taskv1
 ```
 
 ### 2. Install Dependencies
@@ -122,7 +122,7 @@ npm start
 
 The app will be available at: **http://localhost:3000**
 
-> 💡 On first run, the database is automatically seeded with 12 sample products.
+> On first run, the database is automatically seeded with 12 sample products.
 
 ---
 
@@ -149,7 +149,7 @@ Open your browser and navigate to:
 ## 📂 Project Structure
 
 ```
-shopzone-ecommerce/
+capstone-capg-taskv1/
 ├── server.js              # Express server + MongoDB connection + API routes
 ├── package.json           # Dependencies and scripts
 ├── .env                   # Environment variables (not committed)
@@ -172,22 +172,22 @@ shopzone-ecommerce/
 
 | Method | Endpoint       | Description         | Auth Required |
 |--------|---------------|---------------------|:---:|
-| POST   | `/api/signup`  | Create new account  | ❌ |
-| POST   | `/api/login`   | Login to account    | ❌ |
-| POST   | `/api/logout`  | Logout user         | ❌ |
-| GET    | `/api/me`      | Get current user    | ❌ |
+| POST   | `/api/signup`  | Create new account  | No |
+| POST   | `/api/login`   | Login to account    | No |
+| POST   | `/api/logout`  | Logout user         | No |
+| GET    | `/api/me`      | Get current user    | No |
 
 ### Products
 
 | Method | Endpoint         | Description          | Auth Required |
 |--------|-----------------|----------------------|:---:|
-| GET    | `/api/products`  | Get all products     | ❌ |
+| GET    | `/api/products`  | Get all products     | No |
 
 ### Orders
 
 | Method | Endpoint       | Description       | Auth Required |
 |--------|---------------|-------------------|:---:|
-| POST   | `/api/orders`  | Place a new order | ✅ |
+| POST   | `/api/orders`  | Place a new order | Yes |
 
 ### Request/Response Examples
 
@@ -209,11 +209,11 @@ curl -X POST http://localhost:3000/api/login \
 
 ## ☁️ Hosting on AWS
 
-### Option A: AWS EC2 (Recommended for this project)
+### Option A: AWS EC2 (Recommended)
 
 #### Step 1 — Launch an EC2 Instance
 
-1. Go to **AWS Console** → **EC2** → **Launch Instance**
+1. Go to **AWS Console** then **EC2** then **Launch Instance**
 2. Choose **Amazon Linux 2023** or **Ubuntu 22.04** AMI
 3. Select **t2.micro** (free tier eligible)
 4. Configure Security Group — open ports:
@@ -228,20 +228,18 @@ curl -X POST http://localhost:3000/api/login \
 
 ```bash
 chmod 400 your-key.pem
-ssh -i your-key.pem ec2-user@<YOUR_EC2_PUBLIC_IP>
+ssh -i your-key.pem ec2-user@YOUR_EC2_PUBLIC_IP
 ```
 
 #### Step 3 — Install Node.js and MongoDB
 
 ```bash
 # Update system
-sudo yum update -y          # Amazon Linux
-# sudo apt update -y        # Ubuntu
+sudo yum update -y
 
 # Install Node.js 18
 curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
-sudo yum install -y nodejs   # Amazon Linux
-# sudo apt install -y nodejs  # Ubuntu
+sudo yum install -y nodejs
 
 # Verify
 node -v
@@ -250,27 +248,16 @@ npm -v
 
 **Install MongoDB on Amazon Linux:**
 ```bash
-# Create repo file
-sudo tee /etc/yum.repos.d/mongodb-org-7.0.repo <<EOF
+sudo tee /etc/yum.repos.d/mongodb-org-7.0.repo << 'MONGOEOF'
 [mongodb-org-7.0]
 name=MongoDB Repository
 baseurl=https://repo.mongodb.org/yum/amazon/2023/mongodb-org/7.0/x86_64/
 gpgcheck=1
 enabled=1
 gpgkey=https://pgp.mongodb.com/server-7.0.asc
-EOF
+MONGOEOF
 
 sudo yum install -y mongodb-org
-sudo systemctl start mongod
-sudo systemctl enable mongod
-```
-
-**Install MongoDB on Ubuntu:**
-```bash
-curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
-echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-sudo apt update
-sudo apt install -y mongodb-org
 sudo systemctl start mongod
 sudo systemctl enable mongod
 ```
@@ -279,18 +266,18 @@ sudo systemctl enable mongod
 
 ```bash
 # Clone your repo
-git clone https://github.com/YOUR_USERNAME/shopzone-ecommerce.git
-cd shopzone-ecommerce
+git clone https://github.com/rakeshduvva/capstone-capg-taskv1.git
+cd capstone-capg-taskv1
 
 # Install dependencies
 npm install
 
 # Create .env file
-cat > .env <<EOF
+cat > .env << 'ENVEOF'
 MONGO_URI=mongodb://localhost:27017/shopzone
-SESSION_SECRET=$(openssl rand -hex 32)
+SESSION_SECRET=change-this-to-a-random-string
 PORT=3000
-EOF
+ENVEOF
 
 # Test run
 node server.js
@@ -318,14 +305,13 @@ pm2 logs shopzone
 
 ```bash
 # Install Nginx
-sudo yum install -y nginx    # Amazon Linux
-# sudo apt install -y nginx  # Ubuntu
+sudo yum install -y nginx
 
 # Configure Nginx
-sudo tee /etc/nginx/conf.d/shopzone.conf <<'EOF'
+sudo tee /etc/nginx/conf.d/shopzone.conf << 'NGINXEOF'
 server {
     listen 80;
-    server_name YOUR_DOMAIN_OR_IP;
+    server_name _;
 
     location / {
         proxy_pass http://localhost:3000;
@@ -337,7 +323,7 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 }
-EOF
+NGINXEOF
 
 # Start Nginx
 sudo systemctl start nginx
@@ -350,34 +336,21 @@ Your app is now live at: **http://YOUR_EC2_PUBLIC_IP**
 
 ### Option B: AWS Elastic Beanstalk (Easier)
 
-#### Step 1 — Install EB CLI
-
 ```bash
+# Install EB CLI
 pip install awsebcli
-```
 
-#### Step 2 — Initialize and Deploy
-
-```bash
-cd shopzone-ecommerce
-
-# Initialize Elastic Beanstalk
+# Initialize and deploy
+cd capstone-capg-taskv1
 eb init -p node.js shopzone-app --region us-east-1
-
-# Create environment and deploy
 eb create shopzone-env
-
-# Open in browser
 eb open
-```
 
-#### Step 3 — Set Environment Variables
-
-```bash
+# Set environment variables
 eb setenv MONGO_URI=mongodb+srv://USER:PASS@cluster.mongodb.net/shopzone SESSION_SECRET=your-secret PORT=8080
 ```
 
-> ⚠️ For Elastic Beanstalk, use **MongoDB Atlas** (cloud-hosted MongoDB) instead of local MongoDB.
+> For Elastic Beanstalk, use **MongoDB Atlas** (cloud-hosted) instead of local MongoDB.
 
 ---
 
@@ -385,9 +358,9 @@ eb setenv MONGO_URI=mongodb+srv://USER:PASS@cluster.mongodb.net/shopzone SESSION
 
 For production, use **MongoDB Atlas** instead of local MongoDB:
 
-1. Go to [https://cloud.mongodb.com](https://cloud.mongodb.com) → Create a free cluster
+1. Go to [https://cloud.mongodb.com](https://cloud.mongodb.com) and create a free cluster
 2. Create a database user with a password
-3. Whitelist your EC2 IP address (or `0.0.0.0/0` for testing)
+3. Whitelist your EC2 IP address
 4. Get the connection string and update `.env`:
 
 ```env
@@ -414,6 +387,4 @@ This project is licensed under the MIT License.
 
 ## 👤 Author
 
-**ShopZone** — Built as part of the Cloud & DevSecOps Capstone Project.
-   c a p s t o n e - c a p g - t a s k v 1  
- 
+**ShopZone** — Built as part of the Cloud and DevSecOps Capstone Project.
